@@ -12,7 +12,7 @@
 #include <sys/stat.h>
 using namespace std;
 
-#define BUFSIZE 10240   //文件接受缓冲区 
+#define BUFSIZE 10240   //文件接受缓冲区
 #define CURRENTFILEROOT "./userfile/"  //将文件存储在当前路径下
 #define FILEROOT "/home/burnzhang/code/cpp_code/cloudstorage-project/server/userfile/" //根据用户ID创建目录
 
