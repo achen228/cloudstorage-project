@@ -5,6 +5,7 @@
 #include <mysql/mysql.h>
 #include <json/json.h>
 #include <stdio.h>
+#include "time.h"
 #include "log.hpp"
 
 class TableInfo {
@@ -80,8 +81,8 @@ public:
         int numRow = mysql_num_rows(res);
         //获取列数
         int numCol = mysql_num_fields(res);
-        if(numRow > 0 && numCol != 2) {
-            LOG(ERROR, "numCol is not two") << std::endl;
+        if(numRow > 0 && numCol != 4) {
+            LOG(ERROR, "numCol is not four") << std::endl;
             return false;
         }
         //将查询结果集保存到unordered_map中
@@ -90,8 +91,17 @@ public:
             MYSQL_ROW row = mysql_fetch_row(res);
             std::string userID = row[0];
             std::string fileName = row[1];
-            std::string userIDAndFileName = userID + "," + fileName;
-            fileVec->push_back(userIDAndFileName);
+            std::string auth = row[2];
+            //转换时间戳
+            int timeInt = atoi(row[3]);
+            time_t tick = time_t(timeInt);
+            struct tm tm;
+            char s[100];
+            tm = *localtime(&tick);
+            strftime(s, sizeof(s), "%Y-%m-%d %H:%M:%S", &tm);
+            std::string fileUploadTime = s;
+            std::string fileListInfo = userID + "," + fileName + "," + auth + "," + fileUploadTime;
+            fileVec->push_back(fileListInfo);
         }
         //释放结果集,否则会造成资源泄露
         mysql_free_result(res);

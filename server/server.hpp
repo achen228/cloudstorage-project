@@ -347,7 +347,7 @@ private:
             snprintf(inquireIDStr, sizeof(inquireIDStr), "select id from user_register_info where userid = %d;", randNumber);
             ret = tableInfo.InquireUserInfoExist(inquireIDStr);
             if(ret == false) {
-                LOG(ERROR, "userid generated failed") << endl;
+                LOG(ERROR, "The newly generated ID is duplicate, regenerate") << endl;
                 break;
             }
         }
@@ -392,7 +392,7 @@ private:
     {
         //查询用户自己的文件或者其它用户共享的文件
         char sqlStr[1024];
-        snprintf(sqlStr, sizeof(sqlStr), "select userid, filename from file_info where userid = %d or auth = 1;", fileList.userid);
+        snprintf(sqlStr, sizeof(sqlStr), "select userid, filename, auth, upload_time from file_info where userid = %d or auth = 1;", fileList.userid);
         int ret = tableInfo.InquireFile(sqlStr, fileVec);
         if(ret == false) {
             //文件列表查询失败
