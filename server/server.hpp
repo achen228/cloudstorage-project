@@ -32,6 +32,17 @@ enum ReqType
     FILE_UPLOAD
 };
 
+//服务器响应类型
+enum ResType
+{
+    RES_USER_LOGIN = 10,
+    RES_USER_REGISTER,
+    RES_FILE_CHMOD,
+    RES_FILE_LIST,
+    RES_FILE_DOWNLOAD,
+    RES_FILE_UPLOAD
+};
+
 //用户注册信息
 struct UserRegister 
 {
@@ -61,12 +72,20 @@ struct FileList
     int userid;
 };
 
+//文件上传请求
 struct FileUpload
 {
     int userid;
     string filename;
     int fileChmodValue;
     string filebody;
+};
+
+//文件下载请求
+struct FileDownLoad
+{
+    int userid;
+    string filename;
 };
 
 class BaseServer
@@ -90,7 +109,7 @@ public:
             return false;
         }
 
-        // 获取监听套接字描述符
+        //获取服务端TCP监听套接字描述符
         int fd = _listenSock.GetSockfd();
         _ep.EpollAdd(fd);
         while (1)
@@ -108,14 +127,19 @@ public:
             {
                 if (sock.GetSockfd() == _listenSock.GetSockfd())
                 {
-                    //监听套接字
+                    //获取客户端连接后的新套接字
                     TcpServer clisock;
-                    ret = sock.Accept(clisock);
+                    struct sockaddr_in cliaddr;
+                    ret = sock.Accept(clisock, &cliaddr);
                     if (ret == false)
                     {
                         continue;
                     }
-
+                    string cliaddrStr = inet_ntoa(cliaddr.sin_addr);
+                    string cliportStr = to_string(ntohs(cliaddr.sin_port));
+                    string logInfo = "Server have a new conncet," + cliaddrStr + ":" + cliportStr;
+                    LOG(INFO, logInfo) << std::endl;
+                    //将客户端连接后的套接字添加到epoll中监控
                     _ep.EpollAdd(clisock.GetSockfd());
 
                     //TODO...
@@ -123,11 +147,16 @@ public:
                 }
                 else
                 {
-                    //客户端套接字
                     ThreadTask tt;
                     tt.SetTask(sock.GetSockfd(), ThreadPoolHandle);
                     _thpool.PushTask(tt);
-                    _ep.EpollDel(sock.GetSockfd());
+                    //1.当监控到客户端连接后的套接字有事件到来后交给线程去做，然后需要从epoll中删除客户端
+                    //  连接后的套接字，否则如果数据还没有读完，此时epoll还在循环监控这个套接字发现有事件
+                    //  又会触发新的线程去重复做
+                    //2.如果这里删除了，但是客户端依旧和服务器保持着连接，当客户端下次事件到来的时候epoll是
+                    //  监控不到的，即客户端的请求服务器没有做任何处理
+                    //3.暂时的做法是不删除这个套接字，数据没有读完的概率很小，除非有大量数据才会读不完
+                    //_ep.EpollDel(sock.GetSockfd());
                 }
             }
         }
@@ -177,6 +206,7 @@ public:
             //处理用户登录请求
             doUserLoginToDB(userLogin, &status, tableInfo);
             resJson["status"] = status;
+            resJson["resType"] = RES_USER_LOGIN;
             break;
         }
         case USER_REGISTER:{
@@ -193,6 +223,7 @@ public:
             doUserRegisterToDB(userRegister, &userId, &status, tableInfo);
             resJson["status"] = status;
             resJson["userid"] = userId;
+            resJson["resType"] = RES_USER_REGISTER;
             break;
         }
         case FILE_CHMOD:{
@@ -207,6 +238,7 @@ public:
             //处理用户更改文件权限请求
             doFileChmodToDB(fileChmod, &status, tableInfo);
             resJson["status"] = status;
+            resJson["resType"] = RES_FILE_CHMOD;
             break;
         }
         case FILE_LIST:{
@@ -226,10 +258,22 @@ public:
             resJson["status"] = status;
             resJson["fileAmount"] = fileAmount;
             resJson["fileList"] = fileListJson;
+            resJson["resType"] = RES_FILE_LIST;
             break;
         }
         case FILE_DOWNLOAD:{
+            FileDownLoad fileDownLoad;
+            fileDownLoad.userid = reqJson["userid"].asInt();
+            fileDownLoad.filename = reqJson["filename"].asString();
+            string logInfo = "reqType:FILE_DOWNLOAD, userid:"  + reqJson["userid"].asString()
+                             + + ", filename:" + reqJson["filename"].asString();
+            LOG(INFO, logInfo) << endl;                 
             //处理文件下载请求
+            string fileBody;
+            doFileUploadToDisk(fileDownLoad, &status, &fileBody);
+            resJson["status"] = status;
+            resJson["filebody"] = fileBody;
+            resJson["resType"] = RES_FILE_DOWNLOAD;
             break;
         }
         case FILE_UPLOAD:{
@@ -246,6 +290,7 @@ public:
             //处理文件上传请求
             doFileUploadToDB(fileUpload, &status, tableInfo);
             resJson["status"] = status;
+            resJson["resType"] = RES_FILE_UPLOAD;
             break;
         }
         default:
@@ -498,6 +543,11 @@ private:
         *status = resChildProcess.str();
         string logInfo = "File upload completed, resChildProcess status:" + *status;
         LOG(INFO, logInfo) << endl; 
+    }
+
+    static void doFileUploadToDisk(FileDownLoad& fileDownLoad, string* status, string* fileBody)
+    {
+        
     }
 
 private:
