@@ -297,7 +297,9 @@ public:
             //未知的请求类型
             LOG(ERROR, "unknown request type") << endl;
             resJson["status"] = status;
-            break;
+            //没有将客户端描述符从epoll中删除导致文件上传和下载时，服务器操作过久又会触发新的线程
+            //这里暂时直接return，不给客户端响应
+            return true;
         }
 
         //服务器发送数据给客户端
