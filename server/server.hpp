@@ -24,7 +24,7 @@ using namespace std;
 //客户端请求类型
 enum ReqType
 {
-    USER_LOGIN = 0,
+    USER_LOGIN = 1,
     USER_REGISTER,
     FILE_CHMOD,
     FILE_LIST,

@@ -33,6 +33,7 @@ public:
         struct epoll_event ep;
         //开启ET模式：一次性获取完整数据
         ep.events = EPOLLIN | EPOLLET;
+        //ep.events = EPOLLIN;
         ep.data.fd = fd;
         int ret = epoll_ctl(_epollfd, EPOLL_CTL_ADD, fd, &ep);
         if(ret < 0)

@@ -138,16 +138,16 @@ public:
     bool Recv(std::string* buf)
     {
         Setblock();
-        char tmpBuf[1024] = {0};
+        char tmpBuf[10240] = {0};
         ssize_t recv_size = recv(sock_, tmpBuf, sizeof(tmpBuf) - 1, 0);
         if(recv_size < 0)
         {
-            LOG(FATAL, "RecvNonBlock failed") << std::endl;
+            LOG(FATAL, "Recv failed") << std::endl;
             return false;
         }
         else if(recv_size == 0)
         {
-            LOG(FATAL, "RecvNonBlock: Peer close connect") << std::endl;
+            LOG(FATAL, "Recv: Peer close connect") << std::endl;
             return false;
         }
         (*buf).assign(tmpBuf, recv_size);
@@ -160,7 +160,7 @@ public:
         SetNonblock();
         while(1)
         {
-            char tmp[3] = {0};
+            char tmp[10240] = {0};
             ssize_t recv_size = recv(sock_, tmp, sizeof(tmp) - 1, 0);
             if(recv_size < 0)
             {
