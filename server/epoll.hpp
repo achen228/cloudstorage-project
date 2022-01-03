@@ -28,12 +28,28 @@ public:
         return true;
     }
 
-    bool EpollAdd(int fd)
+    bool ResetOneshot(int fd)
     {
         struct epoll_event ep;
-        //开启ET模式：一次性获取完整数据
+        ep.data.fd = fd;
+        ep.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+        int ret = epoll_ctl(_epollfd, EPOLL_CTL_MOD, fd, &ep);
+        if(ret < 0)
+        {
+            LOG(FATAL, "ResetOneshot error") << std::endl;
+            return false;
+        }
+        return true;
+    }
+
+    bool EpollAdd(int fd, bool oneshot = false)
+    {
+        struct epoll_event ep;
+        //开启ET模式
         ep.events = EPOLLIN | EPOLLET;
-        //ep.events = EPOLLIN;
+        if(oneshot) {
+            ep.events = ep.events | EPOLLONESHOT;
+        }
         ep.data.fd = fd;
         int ret = epoll_ctl(_epollfd, EPOLL_CTL_ADD, fd, &ep);
         if(ret < 0)

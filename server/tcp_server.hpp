@@ -12,6 +12,7 @@
 
 #define PORT 3389  //端口
 #define BACKLOG 20 //已完成连接队列的大小, 即同一时刻，服务端最大的并发连接数
+#define SOCKETBUF 102400 //socket缓冲区大小
 
 class TcpServer
 {
@@ -138,7 +139,7 @@ public:
     bool Recv(std::string* buf)
     {
         Setblock();
-        char tmpBuf[10240] = {0};
+        char tmpBuf[SOCKETBUF] = {0};
         ssize_t recv_size = recv(sock_, tmpBuf, sizeof(tmpBuf) - 1, 0);
         if(recv_size < 0)
         {
@@ -160,13 +161,13 @@ public:
         SetNonblock();
         while(1)
         {
-            char tmp[10240] = {0};
+            char tmp[SOCKETBUF] = {0};
             ssize_t recv_size = recv(sock_, tmp, sizeof(tmp) - 1, 0);
             if(recv_size < 0)
             {
                 if(errno == EAGAIN || errno == EWOULDBLOCK)
                 {
-                    //缓冲区当中没有数据了
+                    //已经读完，缓冲区当中没有数据了
                     break;
                 }
                 LOG(FATAL, "RecvNonBlock failed") << std::endl;

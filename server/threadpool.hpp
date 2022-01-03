@@ -6,26 +6,29 @@
 #include <iostream>
 #include <queue>
 #include "log.hpp"
+#include "epoll.hpp"
 
 #define THREAD_MAX 10 //线程池中线程的最大数量
-typedef bool(*handler_t)(int); //处理数据方法的函数指针
+typedef bool(*handler_t)(int, Epoll); //处理数据方法的函数指针
 
 class ThreadTask
 {
 public:
-    void SetTask(int data, handler_t handler)
+    void SetTask(int data, Epoll& ep, handler_t handler)
     {
         _data = data;
+        _ep = ep;
         _handler = handler;
     }
 
     void Run()
     {
-        _handler(_data);
+        _handler(_data, _ep);
     }
 private:
     int _data; //任务中要处理的数据
     handler_t _handler; //任务中处理数据的方法
+    Epoll _ep;
 };
 
 class ThreadPool

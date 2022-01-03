@@ -148,15 +148,16 @@ public:
                 else
                 {
                     ThreadTask tt;
-                    tt.SetTask(sock.GetSockfd(), ThreadPoolHandle);
+                    tt.SetTask(sock.GetSockfd(), _ep, ThreadPoolHandle);
                     _thpool.PushTask(tt);
                     //1.当监控到客户端连接后的套接字有事件到来后交给线程去做，然后需要从epoll中删除客户端
                     //  连接后的套接字，否则如果数据还没有读完，此时epoll还在循环监控这个套接字发现有事件
                     //  又会触发新的线程去重复做
                     //2.如果这里删除了，但是客户端依旧和服务器保持着连接，当客户端下次事件到来的时候epoll是
                     //  监控不到的，即客户端的请求服务器没有做任何处理
-                    //3.暂时的做法是不删除这个套接字，数据没有读完的概率很小，除非有大量数据才会读不完
-                    //_ep.EpollDel(sock.GetSockfd());
+                    //3.现在的做法是删除这个套接字，在线程结束时将客户端套接字重新添加到EPOLL中
+                    //4.但是EPOLL的ET模式还是可能会将socket的某个事件触发多次，这里还是会触发新的线程去做
+                    _ep.EpollDel(sock.GetSockfd());
                 }
             }
         }
@@ -164,7 +165,7 @@ public:
     }
 
     //定义线程处理函数
-    static bool ThreadPoolHandle(int data) {
+    static bool ThreadPoolHandle(int data, Epoll ep) {
         LOG(INFO, "Start processing client requests") << endl;
         //初始化mysql
         TableInfo tableInfo;
@@ -297,9 +298,7 @@ public:
             //未知的请求类型
             LOG(ERROR, "unknown request type") << endl;
             resJson["status"] = status;
-            //没有将客户端描述符从epoll中删除导致文件上传和下载时，服务器操作过久又会触发新的线程
-            //这里暂时直接return，不给客户端响应
-            return true;
+            break;
         }
 
         //服务器发送数据给客户端
@@ -309,9 +308,10 @@ public:
         if(ret < 0)
         {
             LOG(ERROR, "recv msg error") << endl;
-            return false;
         }
         LOG(INFO, "Finish processing client requests") << endl;
+        //线程结束时将客户端套接字重新添加到EPOLL中监控
+        ep.EpollAdd(clientSocketfd.GetSockfd());
         return true;
     }
 
