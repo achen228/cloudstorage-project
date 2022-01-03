@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <boost/algorithm/string.hpp>
 #include "tcp_server.hpp"
 #include "epoll.hpp"
 #include "threadpool.hpp"
@@ -19,6 +20,7 @@
 using namespace std;
 
 #define CGIUPLOAD "./upload"    //外部处理程序(文件上传)
+#define CGIDOWNLOAD "./download" //外部处理程序(文件下载)
 #define BUFSIZE 10240   //文件接受缓冲区
 
 //客户端请求类型
@@ -271,7 +273,7 @@ public:
             LOG(INFO, logInfo) << endl;                 
             //处理文件下载请求
             string fileBody;
-            doFileUploadToDisk(fileDownLoad, &status, &fileBody);
+            doFileDownloadToDisk(fileDownLoad, &status, &fileBody);
             resJson["status"] = status;
             resJson["filebody"] = fileBody;
             resJson["resType"] = RES_FILE_DOWNLOAD;
@@ -469,7 +471,7 @@ private:
             *status = "FAILED";
             return;
         } else if(pid == 0) {
-            //设置环境变量TODO
+            //设置环境变量
             //添加文件名
             setenv("FILENAME", fileUpload.filename.c_str(), 1);
             //添加用户ID
@@ -547,9 +549,102 @@ private:
         LOG(INFO, logInfo) << endl; 
     }
 
-    static void doFileUploadToDisk(FileDownLoad& fileDownLoad, string* status, string* fileBody)
+    static void doFileDownloadToDisk(FileDownLoad& fileDownLoad, string* status, string* fileBody)
     {
-        
+        //父子进程管道通信
+        //父进程向子进程传输请求信息
+        int pipefdin[2] = {-1};
+        //子进程向父进程传输响应信息
+        int pipefdout[2] = {-1};
+        int ret = pipe(pipefdin);
+        if(ret < 0) {
+            cerr << "server.hpp/doFileDownloadToDisk(): pipe create error!! " << endl;
+            *status = "FAILED";
+            return;
+        }
+        ret = pipe(pipefdout);
+        if(ret < 0) {
+            cerr << "server.hpp/doFileDownloadToDisk(): pipe create error!! " << endl;
+            *status = "FAILED";
+            return;
+        }
+
+        //创建子进程 
+        pid_t pid = fork();
+        if(pid < 0) {
+            cerr << "server.hpp/doFileDownloadToDisk(): fork error! " << endl;
+            *status = "FAILED";
+            return;
+        } else if(pid == 0) {
+            //设置环境变量
+            //添加文件名
+            setenv("FILENAME", fileDownLoad.filename.c_str(), 1);
+            //添加用户ID
+            string userIDStr = to_string(fileDownLoad.userid);
+            setenv("USERID", userIDStr.c_str(), 1);
+
+            //子进程关闭管道不用的一端
+            close(pipefdin[1]);
+            close(pipefdout[0]);
+
+            //由于要程序替换，故重定向文件描述符进行通信
+            //将管道的读取端与标准输出关联起来
+            dup2(pipefdin[0], 1);
+            //将管道的写入端与标准输入关联起来                                 
+            dup2(pipefdout[1], 0);
+
+            //子进程程序替换：main函数参数来接受传递的参数
+            execlp(CGIDOWNLOAD, CGIDOWNLOAD, NULL);
+
+            //关闭重定向后的文件描述符
+            close(pipefdin[0]);
+            close(pipefdout[1]);
+        }
+
+        //父进程关闭管道不用的一端
+        close(pipefdin[0]);
+        close(pipefdout[1]);
+
+        //忽略SIGPIPE信号
+        signal(SIGPIPE, SIG_IGN);
+
+        //接受子进程发送的响应信息     
+        stringstream resChildProcess;
+        char buf[BUFSIZE];
+        while(1)
+        {
+            memset(buf, 0, BUFSIZE);
+            int ret = read(pipefdout[0], buf, BUFSIZE);
+            if(ret < 0)
+            {
+                cerr << "server.hpp/doFileDownloadToDisk(): read error" << endl;
+                *status = "FAILED";
+                return;
+            }
+
+            if(ret == 0) {
+                break;
+            }
+            string tmp;
+            tmp.assign(buf, ret);
+            resChildProcess << tmp;
+        }
+        close(pipefdin[1]);
+        close(pipefdout[0]);
+        //分割子进程的响应信息获取status和fileBody
+        string statusAndFileBody = resChildProcess.str();
+        vector<string> vec;
+        boost::split(vec, statusAndFileBody, boost::is_any_of("\3"), boost::token_compress_off);
+        if (vec.size() != 2)
+        {
+            LOG(INFO, "split statusAndFileBody error!") << endl; 
+            *status = "FAILED";
+            return;
+        }
+        *status = vec[0];
+        *fileBody = vec[1];
+        string logInfo = "File download completed, resChildProcess status:" + *status;
+        LOG(INFO, logInfo) << endl; 
     }
 
 private:
