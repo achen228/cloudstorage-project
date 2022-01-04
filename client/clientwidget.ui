@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>clientWidget</class>
+ <widget class="QWidget" name="clientWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>939</width>
+    <height>564</height>
+   </rect>
+  </property>
+  <property name="font">
+   <font>
+    <pointsize>20</pointsize>
+   </font>
+  </property>
+  <property name="windowTitle">
+   <string>云存储平台</string>
+  </property>
+  <widget class="QTabWidget" name="tabWidget">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>20</y>
+     <width>921</width>
+     <height>541</height>
+    </rect>
+   </property>
+   <property name="currentIndex">
+    <number>0</number>
+   </property>
+   <widget class="QWidget" name="personInfo">
+    <attribute name="title">
+     <string>个人信息</string>
+    </attribute>
+    <widget class="QLabel" name="label">
+     <property name="geometry">
+      <rect>
+       <x>280</x>
+       <y>140</y>
+       <width>71</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>昵称：</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_2">
+     <property name="geometry">
+      <rect>
+       <x>280</x>
+       <y>100</y>
+       <width>71</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>账号：</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_3">
+     <property name="geometry">
+      <rect>
+       <x>280</x>
+       <y>180</y>
+       <width>71</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>邮箱：</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="logoutButton">
+     <property name="geometry">
+      <rect>
+       <x>280</x>
+       <y>260</y>
+       <width>171</width>
+       <height>41</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>注销账号</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="modInfoButton">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="geometry">
+      <rect>
+       <x>480</x>
+       <y>260</y>
+       <width>171</width>
+       <height>41</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>修改信息</string>
+     </property>
+    </widget>
+    <widget class="QLineEdit" name="personIDEdit">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="geometry">
+      <rect>
+       <x>350</x>
+       <y>100</y>
+       <width>301</width>
+       <height>31</height>
+      </rect>
+     </property>
+    </widget>
+    <widget class="QLineEdit" name="personNameEdit">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
+     <property name="geometry">
+      <rect>
+       <x>350</x>
+       <y>140</y>
+       <width>301</width>
+       <height>31</height>
+      </rect>
+     </property>
+    </widget>
+    <widget class="QLineEdit" name="personMailEdit">
+     <property name="geometry">
+      <rect>
+       <x>350</x>
+       <y>180</y>
+       <width>301</width>
+       <height>31</height>
+      </rect>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_4">
+     <property name="geometry">
+      <rect>
+       <x>280</x>
+       <y>220</y>
+       <width>71</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>密码：</string>
+     </property>
+    </widget>
+    <widget class="QLineEdit" name="personPasswordEdit">
+     <property name="geometry">
+      <rect>
+       <x>350</x>
+       <y>220</y>
+       <width>301</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="echoMode">
+      <enum>QLineEdit::Password</enum>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="fileList">
+    <attribute name="title">
+     <string>我的文件</string>
+    </attribute>
+    <widget class="QTableWidget" name="tableWidget_2">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>0</y>
+       <width>911</width>
+       <height>501</height>
+      </rect>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>911</width>
+       <height>16777215</height>
+      </size>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="fileList2">
+    <attribute name="title">
+     <string>共享文件</string>
+    </attribute>
+    <widget class="QTableWidget" name="tableWidget_3">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>0</y>
+       <width>911</width>
+       <height>501</height>
+      </rect>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>911</width>
+       <height>16777215</height>
+      </size>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="fileUpload">
+    <attribute name="title">
+     <string>文件上传</string>
+    </attribute>
+    <widget class="QPushButton" name="selectFileButton">
+     <property name="geometry">
+      <rect>
+       <x>600</x>
+       <y>80</y>
+       <width>221</width>
+       <height>61</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>选择本地文件</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="uploadFileButton">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="geometry">
+      <rect>
+       <x>110</x>
+       <y>320</y>
+       <width>711</width>
+       <height>61</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>上传当前文件</string>
+     </property>
+    </widget>
+    <widget class="QLineEdit" name="showFileNameEdit">
+     <property name="geometry">
+      <rect>
+       <x>110</x>
+       <y>80</y>
+       <width>411</width>
+       <height>61</height>
+      </rect>
+     </property>
+     <property name="readOnly">
+      <bool>true</bool>
+     </property>
+    </widget>
+    <widget class="QComboBox" name="setauthcomboBox">
+     <property name="geometry">
+      <rect>
+       <x>110</x>
+       <y>200</y>
+       <width>711</width>
+       <height>61</height>
+      </rect>
+     </property>
+     <item>
+      <property name="text">
+       <string>0(文件权限私有)</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>1(文件权限共享)</string>
+      </property>
+     </item>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="fileSearch">
+    <attribute name="title">
+     <string>文件搜索</string>
+    </attribute>
+    <widget class="QLineEdit" name="searchEdit">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>10</y>
+       <width>691</width>
+       <height>41</height>
+      </rect>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="searchButton">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
+     <property name="geometry">
+      <rect>
+       <x>700</x>
+       <y>10</y>
+       <width>211</width>
+       <height>41</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>搜索</string>
+     </property>
+    </widget>
+    <widget class="QTableWidget" name="tableWidget">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>50</y>
+       <width>911</width>
+       <height>451</height>
+      </rect>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="transList">
+    <attribute name="title">
+     <string>传输列表</string>
+    </attribute>
+   </widget>
+  </widget>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <resources/>
+ <connections/>
+</ui>

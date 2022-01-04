@@ -1,0 +1,37 @@
+#ifndef PROTOBUF_H
+#define PROTOBUF_H
+
+//客户端请求类型
+enum ReqType {
+    USER_LOGIN = 1,
+    USER_REGISTER,
+    FILE_CHMOD,
+    FILE_LIST,
+    FILE_DOWNLOAD,
+    FILE_UPLOAD,
+    FILE_SEARCH,
+    MOD_INFO,
+    USER_LOGOUT,
+    USER_INFO = 31
+};
+
+//服务器响应类型
+enum ResType {
+    RES_USER_LOGIN = 10,
+    RES_USER_REGISTER,
+    RES_FILE_CHMOD,
+    RES_FILE_LIST,
+    RES_FILE_DOWNLOAD,
+    RES_FILE_UPLOAD,
+    RES_FILE_SEARCH,
+    RES_MOD_INFO,
+    RES_USER_LOGOUT,
+    RES_USER_INFO
+};
+
+//服务器响应状态
+#define RES_STATUS_SUCCESS "SUCCESS"
+#define RES_STATUS_FAILED "FAILED"
+
+
+#endif // PROTOBUF_H
