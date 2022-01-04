@@ -1,0 +1,33 @@
+#include "keyboarddialog.h"
+#include "ui_keyboarddialog.h"
+
+keyboardDialog::keyboardDialog(QWidget *parent) :
+    QDialog(parent),
+    ui(new Ui::keyboardDialog)
+{
+    ui->setupUi(this);
+}
+
+keyboardDialog::~keyboardDialog()
+{
+    delete ui;
+}
+
+void keyboardDialog::keyPressEvent(QKeyEvent* event)
+{
+    int x = ui->label->pos().x();
+    int y = ui->label->pos().y();
+    if(event->key() == Qt::Key_Up)
+    {
+        ui->label->move(x, y - 10);
+    } else if(event->key() == Qt::Key_Down)
+    {
+        ui->label->move(x, y + 10);
+    } else if(event->key() == Qt::Key_Left)
+    {
+        ui->label->move(x - 10, y);
+    } else if(event->key() == Qt::Key_Right)
+    {
+        ui->label->move(x + 10, y);
+    }
+}

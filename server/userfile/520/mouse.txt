@@ -1,0 +1,75 @@
+#include "mousedialog.h"
+#include "ui_mousedialog.h"
+
+mouseDialog::mouseDialog(QWidget *parent) :
+    QDialog(parent),
+    ui(new Ui::mouseDialog)
+{
+    ui->setupUi(this);
+}
+
+mouseDialog::~mouseDialog()
+{
+    delete ui;
+}
+
+//鼠标按下
+void mouseDialog::mousePressEvent(QMouseEvent* event)
+{
+    //是否鼠标左键
+    if(event->button() == Qt::LeftButton) 
+    {
+        //获取label所在矩形区域
+        QRect rect = ui->label->frameRect();
+        //坐标平移，让rect和鼠标使用相同的坐标区域
+        rect.translate(ui->label->pos());
+        //判断当前鼠标位置是否在rect矩形区域中
+        if(rect.contains(event->pos()))
+        {
+            _drag = true;
+            //获取鼠标和label的相对位置
+            _pos = ui->label->pos() - event->pos();
+        }
+    }
+}
+
+//鼠标抬起
+void mouseDialog::mouseReleaseEvent(QMouseEvent* event)
+{
+    if(event->button() == Qt::LeftButton) 
+    {
+        _drag = false;
+    }
+}
+
+//鼠标移动
+void mouseDialog::mouseMoveEvent(QMouseEvent* event)
+{
+    if(_drag)
+    {
+        //计算label要移动的新位置
+        QPoint newPos = event->pos() + _pos;
+
+        //获取父窗口大小
+        QSize s1 = size();
+        //获取lable大小
+        QSize s2 = ui->label->size();
+        //min(x) = 0, max(x) = s1.width() - s2.width()
+        if(newPos.x() < 0)
+        {
+            newPos.setX(0);
+        } else if(newPos.x() > s1.width() - s2.width()) {
+            newPos.setX(s1.width() - s2.width());
+        }
+        //min(y) = 0, max(y) = s1.height() - s2.height()
+        if(newPos.y() < 0)
+        {
+            newPos.setY(0);
+        } else if(newPos.y() > s1.height() - s2.height()) {
+            newPos.setY(s1.height() - s2.height());
+        }
+
+        //移动label到新位置
+        ui->label->move(newPos);
+    }
+}

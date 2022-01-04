@@ -1,0 +1,218 @@
+#pragma once
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <pthread.h>
+#include <iostream>
+#include <string>
+
+#include "msgpool.hpp"
+#include "log.hpp"
+#include "connect.hpp"
+#include "usermanager.hpp"
+#include "jsonmessage.hpp"
+
+#define UDP_PORT 17777
+#define TCP_PORT 17778
+#define THREAD_COUNT 2
+
+class ChatSvr
+{
+    public:
+        ChatSvr()
+        {
+            udpsock_ = -1;
+            udpport_ = UDP_PORT; 
+            msgpool_ = NULL;
+            tcpsock_ = -1;
+            tcpport_ = TCP_PORT;
+            usermana_ = NULL;
+        }
+
+        ~ChatSvr()
+        {
+            if(msgpool_)
+            {
+                delete msgpool_;
+                msgpool_ = NULL;
+            }
+
+            if(usermana_)
+            {
+                delete usermana_;
+                usermana_ = NULL;
+            }
+        }
+
+        void Init()
+        {
+            //创建UDP套接字
+            udpsock_ = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+            if(udpsock_ < 0)
+            {
+                LOG(FATAL, "Create udp socket failed") << std::endl;
+                exit(1);
+            }
+            LOG(INFO, "Create udp socket success") << std::endl;
+
+            //绑定UDP地址信息
+            struct sockaddr_in addr_udp;
+            addr_udp.sin_family = AF_INET;
+            addr_udp.sin_port = htons(udpport_);
+            addr_udp.sin_addr.s_addr = inet_addr("0.0.0.0");
+            int ret = bind(udpsock_, (struct sockaddr*)&addr_udp, sizeof(addr_udp));
+            if(ret < 0)
+            {
+                LOG(FATAL, "Bind udp addrinfo failed") << std::endl;
+                exit(2);
+            }
+            LOG(INFO, "Bind udp addrinfo success ") << "0.0.0.0:17777" << std::endl;
+
+            //初始化数据池
+            msgpool_ = new MsgPool();
+            if(!msgpool_)
+            {
+                LOG(FATAL, "Create msgpool failed") << std::endl;
+                exit(3);
+            }
+            LOG(INFO, "Create msgpool success") << std::endl;
+
+            //创建TCP套接字
+            tcpsock_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+            if(tcpsock_ < 0)
+            {
+                LOG(FATAL, "Create tcp socket failed") << std::endl;
+                exit(4);
+            }
+            LOG(INFO, "Create tcp socket success") << std::endl;
+
+            //地址复用
+            int opt = 1;
+            setsockopt(tcpsock_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+            //绑定TCP地址信息
+            struct sockaddr_in addr_tcp;
+            addr_tcp.sin_family = AF_INET;
+            addr_tcp.sin_port = htons(tcpport_);
+            addr_tcp.sin_addr.s_addr = inet_addr("0.0.0.0");
+            ret = bind(tcpsock_, (struct sockaddr*)&addr_tcp, sizeof(addr_tcp));
+            if(ret < 0)
+            {
+                LOG(FATAL, "Bind tcp addrinfo failed") << std::endl;
+                exit(5);
+            }
+            LOG(INFO, "Bind tcp addrinfo success ") << "0.0.0.0:17778" << std::endl;
+
+            //TCP监听
+            ret = listen(tcpsock_, 5);
+            if(ret < 0)
+            {
+                LOG(FATAL, "Tcp listen failed") << std::endl;
+                exit(6);
+            }
+            LOG(INFO, "Tcp listen success") << std::endl;
+
+            //初始化用户管理模块
+            usermana_ = new UserManager();
+            if(!usermana_)
+            {
+                LOG(FATAL, "Create user manager failed") << std::endl;
+                exit(7);
+            }
+            LOG(INFO, "Create user manager success") << std::endl;
+        }
+
+        //生产线程和消费线程开始工作
+        void Start()
+        {
+            pthread_t tid;
+            for(int i = 0; i < THREAD_COUNT; i++)
+            {
+                int ret = pthread_create(&tid, NULL, ProductMsgStart, (void*)this);
+                if(ret < 0)
+                {
+                    LOG(ERROR, "Create product thread failed") << std::endl;
+                    exit(8);
+                }
+
+                ret = pthread_create(&tid, NULL, ConsumeMsgStart, (void*)this);
+                if(ret < 0)
+                {
+                    LOG(ERROR, "Create product thread failed") << std::endl;
+                    exit(9);
+                }
+            }
+            LOG(INFO, "UdpChat server start success") << std::endl;
+
+            while(1)
+            {
+                //TCP接收
+                struct sockaddr_in cliaddr;
+                socklen_t cliaddr_len = sizeof(cliaddr);
+                int newsock = accept(tcpsock_, (struct sockaddr*)&cliaddr, &cliaddr_len);
+                if(newsock < 0)
+                {
+                    LOG(ERROR, "Accept new connect failed") << std::endl;
+                    continue;
+                }
+                LOG(INFO, "Accept new connect success") << std::endl;
+
+                //创建线程处理用户注册、登录请求
+                RegLogConnect* co = new RegLogConnect(newsock, (void*)this); 
+                if(!co)
+                {
+                    LOG(ERROR, "Create reglog connect failed") << std::endl;
+                    continue;
+                }
+                pthread_t tid;
+                int ret = pthread_create(&tid, NULL, RegLogStart, (void*)co);
+                if(ret < 0)
+                {
+                    LOG(ERROR, "Create reglog thread failed") << std::endl;
+                    continue;
+                }
+                LOG(INFO, "Create tcp reglog connect success") << std::endl;
+            }
+        }
+    private:
+        static void* ProductMsgStart(void* arg)
+        {
+            pthread_detach(pthread_self());
+            ChatSvr* cs = (ChatSvr*)arg;
+            while(1) //while(1)循环，生产线程将一直在，主线程main退出时它才会退出
+            {
+                cs->RecvMsg();
+            }
+            return NULL;
+        }
+
+        static void* ConsumeMsgStart(void* arg)
+        {
+            pthread_detach(pthread_self());
+            ChatSvr* cs = (ChatSvr*)arg;
+            while(1) //while(1)循环，消费线程将一直在，主线程main退出时它才会退出
+            {
+                cs->Broadcast();
+            }
+            return NULL;
+        }
+
+        static void* RegLogStart(void* arg)
+        {
+            pthread_detach(pthread_self());
+            RegLogConnect* rlc = (RegLogConnect*)arg;
+
+            //1.客户端发起连接请求
+            char logo; //先接收一个标识，判断用户的请求类型
+            ssize_t recv_size = recv(rlc->GetSock(), &logo, 1, 0);
+            if(recv_size < 0)
+            {
+                LOG(ERROR, "Recv user request logo failed") << std::endl;
+                return NULL;
+            }
+            else if(recv_size == 0)
+            {
+                LOG(ERROR, "Client shutdown connect") << std::endl;
+                return NULL;
+            }

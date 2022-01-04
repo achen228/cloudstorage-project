@@ -1,0 +1,47 @@
+#ifndef RANDOMPHOTODIALOG_H
+#define RANDOMPHOTODIALOG_H
+
+#include <QDialog>
+#include <QTimer>
+#include <QPainter>
+#include <QDir>
+#include <QTime>
+#include <QVector>
+#include <QImage>
+#include <QDebug>
+
+namespace Ui {
+class randomphotoDialog;
+}
+
+class randomphotoDialog : public QDialog
+{
+    Q_OBJECT
+
+public:
+    explicit randomphotoDialog(QWidget *parent = 0);
+    ~randomphotoDialog();
+
+private slots:
+    //开始按钮对应的槽函数
+    void on_pushButton_clicked();
+private:
+    //加载图片容器功能
+    void loadPhotos(const QString& path);
+    //定时器事件处理函数
+    void timerEvent(QTimerEvent*);
+    //绘图事件处理函数
+    void paintEvent(QPaintEvent*);
+private:
+    Ui::randomphotoDialog *ui;
+    //保存图片的容器
+    QVector<QImage> _vecPhotos;
+    //图片在容器中索引
+    int _index;
+    //定时器ID
+    int _timer;
+    //标记：true表示正在摇，false表示停止摇
+    bool isStarted;
+};
+
+#endif // RANDOMPHOTODIALOG_H

@@ -1,0 +1,94 @@
+#pragma once
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <iostream>
+#include "log.hpp"
+
+#define PORT 3389  //端口
+#define BACKLOG 20 //已完成连接队列的大小, 即同一时刻，服务端最大的并发连接数
+
+class TcpServer
+{
+public:
+    TcpServer()
+    {
+        sock_ = -1;
+    }
+
+    ~TcpServer()
+    {}
+
+    bool InitTcpServer()
+    {
+        if(!CreateSocket() || !Bind() || !Listen())
+        {
+            return false;
+        }
+        return true;
+    }
+
+    bool CreateSocket()
+    {
+        sock_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        if(sock_ < 0)
+        {
+            LOG(FATAL, "Create socket failed") << std::endl;
+            return false;
+        }
+        return true;
+    }
+
+    bool Bind()
+    {
+        struct sockaddr_in addr;
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(PORT);
+        addr.sin_addr.s_addr = inet_addr("0.0.0.0");
+        int ret = bind(sock_, (struct sockaddr*)&addr, sizeof(addr));
+        if(ret < 0)
+        {
+            LOG(FATAL, "Bind failed") << std::endl;
+            return false;
+        }
+        return true;
+    }
+
+    bool Listen(int backlog = BACKLOG)
+    {
+        int ret = listen(sock_, backlog);
+        if(ret < 0)
+        {
+            LOG(FATAL, "Listen failed") << std::endl;
+            return false;
+        }
+        return true;
+    }
+
+    bool Accept(TcpServer& ts, struct sockaddr_in* addr = NULL)
+    {
+        struct sockaddr_in cliaddr;
+        socklen_t cliaddr_len = sizeof(cliaddr);
+        int newsock = accept(sock_, (struct sockaddr*)&cliaddr, &cliaddr_len);
+        if(newsock < 0)
+        {
+            LOG(FATAL, "Accept failed") << std::endl;
+            return false;
+        }
+        ts.sock_ = newsock;
+
+        if(addr != NULL)
+        {
+            memcpy(addr, &cliaddr, cliaddr_len);
+        }
+        return true;
+    }
+
+private:
+    int sock_;
+};
