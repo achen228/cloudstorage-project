@@ -31,7 +31,11 @@ enum ReqType
     FILE_CHMOD,
     FILE_LIST,
     FILE_DOWNLOAD,
-    FILE_UPLOAD
+    FILE_UPLOAD,
+    FILE_SEARCH,
+    MOD_INFO,
+    USER_LOGOUT,
+    USER_INFO = 31
 };
 
 //服务器响应类型
@@ -42,7 +46,11 @@ enum ResType
     RES_FILE_CHMOD,
     RES_FILE_LIST,
     RES_FILE_DOWNLOAD,
-    RES_FILE_UPLOAD
+    RES_FILE_UPLOAD,
+    RES_FILE_SEARCH,
+    RES_MOD_INFO,
+    RES_USER_LOGOUT,
+    RES_USER_INFO
 };
 
 //用户注册信息
@@ -88,6 +96,30 @@ struct FileDownLoad
 {
     int userid;
     string filename;
+};
+
+//文件搜索请求
+struct FileSearch
+{
+    int userid;
+    string query;
+};
+
+//修改信息请求
+struct ModInfo
+{
+    int userid;
+    string username;
+    string password;
+    string mail;
+};
+
+//服务器响应个人信息窗口请求
+struct UserInfo
+{
+    string username;
+    string userpassword;
+    string usermail;
 };
 
 class BaseServer
@@ -296,6 +328,70 @@ public:
             resJson["resType"] = RES_FILE_UPLOAD;
             break;
         }
+        case FILE_SEARCH:{
+            FileSearch fileSearch;
+            fileSearch.userid = reqJson["userid"].asInt();
+            fileSearch.query = reqJson["query"].asString();
+            string logInfo = "reqType:FILE_SEARCH, userid:"  + reqJson["userid"].asString()
+                             + ", query:" + reqJson["query"].asString();
+            LOG(INFO, logInfo) << endl;     
+            vector<string> vecResQuery;
+            //处理文件搜索请求
+            doFileSearchToDB(fileSearch, &status, &vecResQuery, tableInfo);
+            Json::Value resQueryJson;
+            int resQueryAmount  = vecResQuery.size();
+            for(int i = 0; i < resQueryAmount; i++) {
+                resQueryJson[i] = vecResQuery[i];
+            }
+            resJson["status"] = status;
+            resJson["resQuery"] = resQueryJson;
+            resJson["resQueryAmount"] = resQueryAmount;
+            resJson["resType"] = RES_FILE_SEARCH;
+            string logInfo2 = "文件搜索数量:" + resJson["resQueryAmount"].asString();
+            LOG(INFO, logInfo2) << endl;
+            break;
+        }
+        case MOD_INFO:{
+            ModInfo modInfo;
+            modInfo.userid = reqJson["userid"].asInt();
+            modInfo.username = reqJson["personName"].asString();
+            modInfo.password = reqJson["personPassword"].asString();
+            modInfo.mail = reqJson["personMail"].asString();
+            string logInfo = "reqType:MOD_INFO, userid:"  + reqJson["userid"].asString()
+                             + ", username:" + reqJson["personName"].asString()
+                             + ", password:" + reqJson["personPassword"].asString()
+                             + ", mail:" + reqJson["personMail"].asString();
+            LOG(INFO, logInfo) << endl; 
+            //处理用户修改信息请求
+            doModInfoToDB(modInfo, &status, tableInfo);
+            resJson["status"] = status;
+            resJson["resType"] = RES_MOD_INFO;
+            break;
+        }
+        case USER_LOGOUT:{
+            int userid = reqJson["userid"].asInt();
+            string logInfo = "reqType:USER_LOGOUT, userid:"  + reqJson["userid"].asString();
+            LOG(INFO, logInfo) << endl; 
+            //处理用户注销请求
+            doUserLogoutToDB(userid, &status, tableInfo);
+            resJson["status"] = status;
+            resJson["resType"] = RES_USER_LOGOUT;
+            break;
+        }
+        case USER_INFO:{
+            int userid = reqJson["userid"].asInt();
+            string logInfo = "reqType:USER_INFO, userid:"  + reqJson["userid"].asString();
+            LOG(INFO, logInfo) << endl;
+            //处理展示个人信息窗口请求
+            UserInfo userInfo;
+            doUserInfoToDB(userInfo, userid, &status, tableInfo);
+            resJson["status"] = status;
+            resJson["personName"] = userInfo.username;
+            resJson["personPassword"] = userInfo.userpassword;
+            resJson["personMail"] = userInfo.usermail;
+            resJson["resType"] = RES_USER_INFO;
+            break;
+        }
         default:
             //未知的请求类型
             LOG(ERROR, "unknown request type") << endl;
@@ -441,6 +537,101 @@ private:
         }
         *status = "SUCCESS"; 
         LOG(INFO, "The upload information is inserted into the DB successfully") << endl;
+    }
+
+    //处理文件搜索请求
+    static void doFileSearchToDB(FileSearch& fileSearch, string* status, vector<string>* vecResQuery, TableInfo& tableInfo)
+    {
+        //根据查询词查询用户自己的文件或者其它用户共享的文件信息
+        char sqlStr[1024];
+        snprintf(sqlStr, sizeof(sqlStr), "select userid, filename, auth, upload_time from file_info where (userid = %d or auth = 1) and (filename like '%s%');", 
+                                         fileSearch.userid, fileSearch.query.c_str());
+        int ret = tableInfo.InquireFile(sqlStr, vecResQuery);
+        if(ret == false) {
+            //文件信息查询失败
+            *status = "FAILED";
+            LOG(ERROR, "File search failed") << endl;
+            return;
+        }
+        //文件信息查询成功
+        *status = "SUCCESS"; 
+        LOG(INFO, "File search success") << endl;
+    }
+
+    static void doUserInfoToDB(UserInfo& userInfo, int& userid, string* status, TableInfo& tableInfo)
+    {
+        //根据用户ID查找用户信息
+        char sqlStr[1024];
+        snprintf(sqlStr, sizeof(sqlStr), "select userid, name, password, mail from user_register_info where userid = %d;", userid);
+        vector<string> vecuserinfo;
+        int ret = tableInfo.InquireUserInfo(sqlStr, &vecuserinfo);
+        if(ret == false) {
+            //用户信息查询失败
+            *status = "FAILED";
+            LOG(ERROR, "Failed to query user information") << endl;
+            return;
+        }
+        //用户信息查询数量
+        if(vecuserinfo.size() != 4) {
+            *status = "FAILED";
+            LOG(ERROR, "Incorrect number of user information queries") << endl;
+            return;
+        }
+        //用户信息查询成功
+        //打印日志
+        // string loginfo = "查询的用户信息:" + vecuserinfo[0] + "," + vecuserinfo[1] + "," + vecuserinfo[2] + 
+        //                  "," + vecuserinfo[3];
+        // LOG(INFO, loginfo) << endl; 
+        userInfo.username = vecuserinfo[1];
+        userInfo.userpassword = vecuserinfo[2];
+        userInfo.usermail = vecuserinfo[3];
+        //打印日志
+        string loginfo = "查询的用户信息:" + userInfo.username + "," + userInfo.userpassword + "," + userInfo.usermail;
+        LOG(INFO, loginfo) << endl; 
+        *status = "SUCCESS"; 
+        LOG(INFO, "User information query is successful") << endl;
+    }
+
+    static void doModInfoToDB(ModInfo& modInfo, string* status, TableInfo& tableInfo)
+    {
+        //根据用户ID修改昵称、密码、邮箱信息
+        char sqlStr[1024];
+        snprintf(sqlStr, sizeof(sqlStr), "update user_register_info set name = '%s', password = '%s', mail = '%s' where userid = %d;", 
+                 modInfo.username.c_str(), modInfo.password.c_str(), modInfo.mail.c_str(), modInfo.userid);
+        int ret = tableInfo.DoMysqlQuery(sqlStr);
+        if(ret == false) {
+            LOG(ERROR, "User failed to modify information") << endl;
+            *status = "FAILED";
+            return;
+        }
+        *status = "SUCCESS"; 
+        LOG(INFO, "User modified information successfully") << endl;
+    }
+
+    static void doUserLogoutToDB(int& userid, string* status, TableInfo& tableInfo)
+    {
+        //根据用户ID删除用户信息，用户对应磁盘中的文件暂时不删除(有时间再实现)
+        //删除用户注册表中的记录
+        char sqlStr[1024];
+        snprintf(sqlStr, sizeof(sqlStr), "delete from user_register_info where userid = %d;", userid);
+        int ret = tableInfo.DoMysqlQuery(sqlStr);
+        if(ret == false) {
+            LOG(ERROR, "Failed to delete user of user_register_info") << endl;
+            *status = "FAILED";
+            return;
+        }
+        //删除文件信息表中的记录
+        char sqlStr2[1024];
+        snprintf(sqlStr2, sizeof(sqlStr2), "delete from file_info where userid = %d;", userid);
+        ret = tableInfo.DoMysqlQuery(sqlStr);
+        if(ret == false) {
+            LOG(ERROR, "Failed to delete user of file_info") << endl;
+            *status = "FAILED";
+            return;
+        }
+        //用户信息删除成功
+        *status = "SUCCESS"; 
+        LOG(INFO, "User information deleted successfully") << endl;        
     }
 
 private:
@@ -637,7 +828,7 @@ private:
         boost::split(vec, statusAndFileBody, boost::is_any_of("\3"), boost::token_compress_off);
         if (vec.size() != 2)
         {
-            LOG(INFO, "split statusAndFileBody error!") << endl; 
+            LOG(ERROR, "split statusAndFileBody error!") << endl; 
             *status = "FAILED";
             return;
         }

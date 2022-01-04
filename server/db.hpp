@@ -65,6 +65,45 @@ public:
         return true;       
     }
 
+    //查询某一用户具体信息，查询条件要具有唯一性
+    bool InquireUserInfo(char* sql_str, std::vector<std::string>* vecUserInfo) {
+        int ret = mysql_query(_mysql, sql_str);
+        if(ret != 0) {
+            LOG(ERROR, "query sql failed") << std::endl;
+            return false;
+        }
+        //保存查询结果
+        MYSQL_RES* res = mysql_store_result(_mysql);
+        if(res == NULL) {
+            LOG(ERROR, "store result failed") << std::endl;
+            return false;
+        }
+        //获取行数
+        int numRow = mysql_num_rows(res);
+        //获取列数
+        int numCol = mysql_num_fields(res);
+        if(numRow != 1 && numCol != 4) {
+            LOG(ERROR, "numRow is not 1 or numCol is not four") << std::endl;
+            return false;
+        }
+        //将查询结果集保存到vector中
+        for(int i = 0; i < numRow; i++) {
+            //res有读取位置控制，每次获取的都是下一条数据
+            MYSQL_ROW row = mysql_fetch_row(res);
+            std::string userID = row[0];
+            std::string userName = row[1];
+            std::string userPassword = row[2];
+            std::string userMail = row[3];
+            vecUserInfo->push_back(userID);
+            vecUserInfo->push_back(userName);
+            vecUserInfo->push_back(userPassword);
+            vecUserInfo->push_back(userMail);
+        }
+        //释放结果集,否则会造成资源泄露
+        mysql_free_result(res);
+        return true;
+    }
+
     bool InquireFile(char* sql_str, std::vector<std::string>* fileVec) {
         int ret = mysql_query(_mysql, sql_str);
         if(ret != 0) {
@@ -85,7 +124,7 @@ public:
             LOG(ERROR, "numCol is not four") << std::endl;
             return false;
         }
-        //将查询结果集保存到unordered_map中
+        //将查询结果集保存到vector中
         for(int i = 0; i < numRow; i++) {
             //res有读取位置控制，每次获取的都是下一条数据
             MYSQL_ROW row = mysql_fetch_row(res);
